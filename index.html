@@ -1,0 +1,88 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title> INFO 3300 Project 1 </title>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://d3js.org/topojson.v3.min.js"></script>
+        <style>
+            .country {
+                fill: lightgrey;
+            }
+            .outline {
+                fill: none;
+                stroke: black;
+                stroke-width: 1px;
+            }
+            .graticule {
+                fill: none;
+                stroke: grey;
+                stroke-width: 1px;
+            }
+            .tooltip {
+                pointer-events: none;
+            }
+
+        </style>
+    </head>
+    <body>
+        <p> Map visualization </p>
+        <svg width = 1200 height = 800 id="map" style="background: #445; margin-top:40px"></svg>
+        <script>
+            const svg = d3.select("svg#map");
+            const width = svg.attr("width");
+            const height = svg.attr("height");
+            const margin = { top: 10, right: 10, bottom: 10, left:10};
+            const mapWidth = width - margin.left - margin.right;
+            const mapHeight = height - margin.top - margin.bottom;
+            const map = svg.append("g")
+                  .attr("transform","translate("+margin.left+","+margin.top+")");
+            const requestData = async function() {
+                const world = await d3.json("world-110m.v1.json");
+                
+
+                var countries = topojson.feature(world, world.objects.countries);
+                var countriesMesh = topojson.mesh(world, world.objects.countries);
+                var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], countries);
+                var path = d3.geoPath().projection(projection);
+                console.log(projection);
+
+                let countriesPaths = map.selectAll("path.country").data(countries.features)
+                     .join("path")
+                     .attr("class", "country")
+                     .attr("note", d => d.id) 
+                     .attr("d", path)
+  
+                map.append("path").datum(countriesMesh)
+                    .attr("class","outline")
+                    .attr("d", path);
+
+                meteorData = await d3.csv("Meteorite_Landings.csv", d3.autoType);
+
+                meteorData = meteorData.filter( (d) => {return d['reclat'] != null && d['reclong'] != null && !isNaN(d['reclat']) && !isNaN(d['reclong'])}  );
+
+                console.log(meteorData);
+
+                console.log(projection([+meteorData[100]['reclong'], +meteorData[100]['reclat']]))
+
+
+                map.selectAll("circle").data(meteorData)
+                    .join("circle")
+                    .attr("class", "point")
+                    .attr("fill", "#2E8B57")
+                    .attr("r", 2.5)
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 0.4) 
+                    .attr("opacity", 0.25)
+                    .attr("cx", d => (projection([+d['reclong'], +d['reclat']]))[0])
+                    .attr("cy", d => (projection([+d['reclong'], +d['reclat']]))[1]);
+            }
+            requestData();
+        </script>
+        <p id = 'map description'>
+            This is a visualization of meteorites hitting on the Earth. Each circle represents 
+            the location of which the meteorite is found. The opacity is reduced to better see 
+            overlaps. We can tell that the meteorites are concentrated in central/south US, 
+            Europe, North Africa, and south Austrialia.
+        </p>
+    </body>
+</html>
